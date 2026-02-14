@@ -170,11 +170,173 @@ Support for:
 
 ### Integration Workflow
 
-**Typical deployment:**
+## Building from Source
+
+### Prerequisites
+
+**Required:**
+- Windows 10/11 (64-bit)
+- CMake 3.24 or later
+- Visual Studio 2022 (Community Edition or higher)
+- Git
+
+**Recommended:**
+- vcpkg (for dependency management)
+- NVIDIA Quadro or similar professional GPU (for best performance)
+
+### Build Instructions
+
+#### 1. Clone the Repository
+
+```bash
+git clone https://github.com/gmeisel01/CasparCG_Enhanced_Working.git
+cd CasparCG_Enhanced_Working
 ```
-CasparCG Server → Screen Consumer (custom resolution) → Presentation Switcher → Displays
-                                                      (Barco E2, Spyder X80, etc.)
+
+#### 2. Install Dependencies with vcpkg
+
+```bash
+# Clone vcpkg if you don't have it
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+.\bootstrap-vcpkg.bat
+
+# Install CasparCG dependencies
+.\vcpkg install --triplet x64-windows
 ```
+
+#### 3. Configure with CMake
+
+```bash
+# From the CasparCG_Enhanced_Working root directory
+mkdir build
+cd build
+
+# Configure (replace path to vcpkg as needed)
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake -A x64
+
+# Or if vcpkg is in parent directory:
+cmake .. -DCMAKE_TOOLCHAIN_FILE=../../vcpkg/scripts/buildsystems/vcpkg.cmake -A x64
+```
+
+#### 4. Build
+
+```bash
+# Build Release configuration
+cmake --build . --config Release
+
+# Or build Debug for development
+cmake --build . --config Debug
+```
+
+#### 5. Run
+
+```bash
+cd Release  # or Debug
+.\casparcg.exe
+```
+
+### Build Notes
+
+- **PortAudio**: The build automatically includes PortAudio dependencies (DLL, lib, headers in `dependencies/portaudio/`)
+- **First build**: May take 20-40 minutes depending on your system
+- **Incremental builds**: Much faster (1-5 minutes)
+- **Output location**: Executable is in `build/Release/` or `build/Debug/`
+
+### Troubleshooting
+
+**CMake can't find dependencies:**
+```bash
+# Make sure vcpkg toolchain path is correct
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/full/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake -A x64
+```
+
+**Build errors with PortAudio:**
+- PortAudio binaries are included in `dependencies/portaudio/`
+- Ensure this folder exists in your clone
+- Headers should be in `dependencies/portaudio/include/portaudio.h`
+
+**Linker errors:**
+- Try cleaning: `cmake --build . --config Release --clean-first`
+- Or delete `build/` folder and reconfigure from scratch
+
+---
+
+## Configuration
+
+### Audio-Video Sync (OpenAL)
+
+Edit `casparcg.config`:
+
+```xml
+<system-audio>
+  <latency-compensation-ms>40</latency-compensation-ms>
+  <auto-tune-latency>true</auto-tune-latency>
+</system-audio>
+```
+
+**Settings:**
+- `latency-compensation-ms`: Initial latency offset (default: 40ms)
+- `auto-tune-latency`: Enable automatic adjustment (default: false)
+
+### Multi-Channel ASIO (PortAudio)
+
+```xml
+<portaudio>
+  <device-name>Your ASIO Device Name</device-name>
+  <output-channels>8</output-channels>
+  <latency-compensation-ms>40</latency-compensation-ms>
+  <auto-tune-latency>true</auto-tune-latency>
+  <buffer-size-frames>128</buffer-size-frames>
+  <fifo-ms>50</fifo-ms>
+</portaudio>
+```
+
+**Settings:**
+- `device-name`: ASIO device (leave empty for default)
+- `output-channels`: Number of output channels (2-32+)
+- `buffer-size-frames`: ASIO buffer size (64, 128, 256, 512)
+- `fifo-ms`: Internal buffer size in milliseconds (default: 50ms)
+
+**ASIO Setup:**
+1. Install ASIO driver for your audio interface (or ASIO4ALL/FlexASIO)
+2. Configure ASIO control panel to match CasparCG sample rate (typically 48000 Hz)
+3. Set buffer size in ASIO control panel
+4. Test with 2 channels first before using multi-channel
+
+### Custom Display Configuration (Screen Consumer)
+
+```xml
+<screen>
+  <device>0</device>
+  <aspect-ratio>3840/1080</aspect-ratio>
+  <stretch>fill</stretch>
+  <windowed>false</windowed>
+  <x>0</x>
+  <y>0</y>
+  <width>7680</width>
+  <height>2160</height>
+  <brightness-boost>1.2</brightness-boost>
+  <saturation-boost>1.1</saturation-boost>
+  <always-on-top>false</always-on-top>
+  <vsync>false</vsync>
+</screen>
+```
+
+**Custom Aspect Ratios:**
+- Division format: `<aspect-ratio>3840/1080</aspect-ratio>`
+- Decimal format: `<aspect-ratio>3.555</aspect-ratio>`
+- Supports any ratio for presentation systems
+
+**Multi-Display Spanning:**
+- Set `x`, `y` for extended desktop positioning
+- Set `width`, `height` for custom resolutions
+- Works with NVIDIA Mosaic, AMD Eyefinity, or Windows extended desktop
+
+**Visual Calibration:**
+- `brightness-boost`: 0.1 to 2.0 (1.0 = no change)
+- `saturation-boost`: 0.1 to 2.0 (1.0 = no change)
+- Applied in shader for GPU-accelerated processing
 
 The screen consumer provides flexible output that feeds downstream presentation systems, which handle final display routing and processing.
 
